@@ -12,3 +12,6 @@ philosophy. Like dwm, dwl is:
 - Tied to as few external dependencies as possible
 
 ## Patches
+
+- [`dwl-bar`](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/bar): uses `slstatus` to output info into dwl, which now has a bar.
+- `wallust` integration: added a way to re-compile dwl using wallust to generate a theme (`dwl-colors.h`)
