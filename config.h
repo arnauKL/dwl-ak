@@ -151,14 +151,22 @@ static const enum libinput_config_tap_button_map button_map =
 
 /* commands */
 static const char *termcmd[] = {"foot", NULL};
-static const char *menucmd[] = {"wmenu-run",           "-b", "-i", "-f",
-                                "CaskaydiaCove NF 10", NULL};
+static const char *menucmd[] = {
+    "wmenu-run", "-b",     "-i", "-f",       "CaskaydiaCove NF 10",
+    "-N",        "000000", "-S", "999999cc", "-s",
+    "000000ff",  NULL};
+static const char *screenshotcmd[] = {"grimshot", "copy", "area",
+                                      NULL}; // for me only
 
 static const Key keys[] = {
     /* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
     /* modifier                  key                 function        argument */
     {MODKEY, XKB_KEY_p, spawn, {.v = menucmd}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_Return, spawn, {.v = termcmd}},
+    {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT,
+     XKB_KEY_S,
+     spawn,
+     {.v = screenshotcmd}},
     {MODKEY, XKB_KEY_b, togglebar, {0}},
     {MODKEY, XKB_KEY_j, focusstack, {.i = +1}},
     {MODKEY, XKB_KEY_k, focusstack, {.i = -1}},
