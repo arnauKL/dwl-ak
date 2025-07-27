@@ -14,7 +14,7 @@ static const int bypass_surface_visibility =
 static const unsigned int borderpx = 1; /* border pixel of windows */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
-static const float fullscreen_bg[] = {0.2f, 0.2f, 0.2f,
+static const float fullscreen_bg[] = {0.0f, 0.0f, 0.0f,
                                       1.0f}; /* You can also use glsl colors */
 
 static const int showbar = 1; /* 0 means no bar */
@@ -157,12 +157,14 @@ static const char *menucmd[] = {
     "000000ff",  NULL};
 static const char *screenshotcmd[] = {"grimshot", "copy", "area",
                                       NULL}; // for me only
+static const char *filemanagercmd[] = {"foot", "ranger", NULL}; // for me only
 
 static const Key keys[] = {
     /* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
     /* modifier                  key                 function        argument */
     {MODKEY, XKB_KEY_p, spawn, {.v = menucmd}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_Return, spawn, {.v = termcmd}},
+    {MODKEY, XKB_KEY_e, spawn, {.v = filemanagercmd}},
     {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT,
      XKB_KEY_S,
      spawn,
@@ -176,13 +178,13 @@ static const Key keys[] = {
     {MODKEY, XKB_KEY_l, setmfact, {.f = +0.05f}},
     {MODKEY, XKB_KEY_Return, zoom, {0}},
     {MODKEY, XKB_KEY_Tab, view, {0}},
-    {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_C, killclient, {0}},
+    {MODKEY, XKB_KEY_q, killclient, {0}},
     {MODKEY, XKB_KEY_t, setlayout, {.v = &layouts[0]}},
-    {MODKEY, XKB_KEY_f, setlayout, {.v = &layouts[1]}},
+    {MODKEY, XKB_KEY_n, setlayout, {.v = &layouts[1]}},
     {MODKEY, XKB_KEY_m, setlayout, {.v = &layouts[2]}},
     {MODKEY, XKB_KEY_space, setlayout, {0}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_space, togglefloating, {0}},
-    {MODKEY, XKB_KEY_e, togglefullscreen, {0}},
+    {MODKEY, XKB_KEY_f, togglefullscreen, {0}},
     {MODKEY, XKB_KEY_0, view, {.ui = ~0}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_equal, tag, {.ui = ~0}},
     {MODKEY, XKB_KEY_comma, focusmon, {.i = WLR_DIRECTION_LEFT}},

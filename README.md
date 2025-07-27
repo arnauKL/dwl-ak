@@ -15,4 +15,4 @@ philosophy. Like dwm, dwl is:
 
 - [`dwl-bar`](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/bar): uses `slstatus` to output info into dwl, which now has a bar.
 - `wallust` integration: added a way to re-compile dwl using wallust to generate a theme (`dwl-colors.h`) (homemade).
-- mouse warping: simmilar to hyprland. When changing focus with Alt+J / Alt+K, have the mouse warp to the center of the new client (homemade).
+- mouse warping: similar to hyprland. When changing focus with Alt+J / Alt+K, have the mouse warp to the center of the new client (homemade).
