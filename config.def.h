@@ -14,6 +14,8 @@ static const unsigned int borderpx = 1; /* border pixel of windows */
 static const float fullscreen_bg[] = {0.0f, 0.0f, 0.0f,
                                       1.0f}; /* You can also use glsl colors */
 
+static int enableautoswallow = 1; /* enables autoswallowing newly spawned clients */
+static float swallowborder = 1.0f; /* add this multiplied by borderpx to border when a client is swallowed */
 static const int showbar = 1; /* 0 means no bar */
 static const int topbar = 1;  /* 0 means bottom bar */
 static const char *fonts[] = {"monospace:size=10"};
@@ -35,13 +37,21 @@ static int log_level = WLR_ERROR;
 
 /* NOTE: ALWAYS keep a rule declared even if you don't use rules (e.g leave at
  * least one example) */
+// static const Rule rules[] = {
+//     /* app_id             title       tags mask     isfloating   monitor */
+//     /* examples: */
+//     {"Gimp_EXAMPLE", NULL, 0, 1,
+//      -1}, /* Start on currently visible tags floating, not tiled */
+//     {"firefox_EXAMPLE", NULL, 1 << 8, 0, -1}, /* Start on ONLY tag "9" */
+// };
 static const Rule rules[] = {
-    /* app_id             title       tags mask     isfloating   monitor */
-    /* examples: */
-    {"Gimp_EXAMPLE", NULL, 0, 1,
-     -1}, /* Start on currently visible tags floating, not tiled */
-    {"firefox_EXAMPLE", NULL, 1 << 8, 0, -1}, /* Start on ONLY tag "9" */
-};
+	/* app_id             title       tags mask     isfloating   isterm   noswallow   monitor */
+	/* examples: */
+	{ "foot",             NULL,       0,            0,           1,       1,          -1 },
+	{ "Gimp_EXAMPLE",     NULL,       0,            1,           0,       0,          -1 }, /* Start on currently visible tags floating, not tiled */
+	{ "firefox_EXAMPLE",  NULL,       1 << 8,       0,           0,       0,          -1 }, /* Start on ONLY tag "9" */
+ };
+ 
 
 /* layout(s) */
 static const Layout layouts[] = {
@@ -174,6 +184,8 @@ static const Key keys[] = {
     {MODKEY, XKB_KEY_space, setlayout, {0}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_space, togglefloating, {0}},
     {MODKEY, XKB_KEY_e, togglefullscreen, {0}},
+	{ MODKEY,                    XKB_KEY_a,          toggleswallow,  {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_A,          toggleautoswallow,{0} },
     {MODKEY, XKB_KEY_0, view, {.ui = ~0}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_parenright, tag, {.ui = ~0}},
     {MODKEY, XKB_KEY_comma, focusmon, {.i = WLR_DIRECTION_LEFT}},
