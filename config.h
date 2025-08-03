@@ -11,6 +11,7 @@ static const int sloppyfocus = 1; /* focus follows mouse */
 static const int bypass_surface_visibility =
     0; /* 1 means idle inhibitors will disable idle tracking even if it's
           surface isn't visible  */
+static const int smartborders              = 1;
 static const unsigned int borderpx = 1; /* border pixel of windows */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
@@ -19,19 +20,19 @@ static const float fullscreen_bg[] = {0.0f, 0.0f, 0.0f,
 
 static const int showbar = 1; /* 0 means no bar */
 static const int topbar = 0;  /* 0 means bottom bar */
-static const char *fonts[] = {"CaskaydiaCove NF:size=10"};
+static const char *fonts[] = {"CaskaydiaCove NF:size=9"};
 static const float rootcolor[] = COLOR(0x000000ff);
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
 static uint32_t colors[][3] = {
     /*               fg          bg          border    */
-    [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x444444ff},
-    [SchemeSel] = {0xeeeeeeff, WALLUST_BG_SELECTED, WALLUST_BORDER_SELECTED},
+    [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x111111ff},
+    [SchemeSel] = {0xeeeeeeff, 0x333333ff, 0x444444ff},
     [SchemeUrg] = {0, 0, 0x770000ff},
 };
 
 /* tagging - TAGCOUNT must be no greater than 31 */
-static char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
+static char *tags[] = {"1", "2", "3", "4", "5", "6", "7"};
 
 /* logging */
 static int log_level = WLR_ERROR;
@@ -77,9 +78,13 @@ static const struct xkb_rule_names xkb_rules = {
     /* example:
     .options = "ctrl:nocaps",
     */
-    .options = "caps:ctrl_modifier,numlock:on",
+    .options = "caps:ctrl_modifier",
     .layout = "es",
 };
+
+/* numlock and capslock (from patch) */
+static const int numlock = 1;
+static const int capslock = 0;
 
 static const int repeat_rate = 50;
 static const int repeat_delay = 450;
@@ -157,7 +162,8 @@ static const char *menucmd[] = {
     "000000ff",  NULL};
 static const char *screenshotcmd[] = {"grimshot", "copy", "area",
                                       NULL}; // for me only
-static const char *filemanagercmd[] = {"foot", "ranger", NULL}; // for me only
+static const char *filemanagercmd[] = {"foot", "lf", NULL}; // for me only
+static const char *browsercmd[] = {"luakit", NULL}; // for me only
 
 static const Key keys[] = {
     /* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
@@ -165,6 +171,7 @@ static const Key keys[] = {
     {MODKEY, XKB_KEY_p, spawn, {.v = menucmd}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_Return, spawn, {.v = termcmd}},
     {MODKEY, XKB_KEY_e, spawn, {.v = filemanagercmd}},
+    {MODKEY, XKB_KEY_w, spawn, {.v = browsercmd }},
     {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT,
      XKB_KEY_S,
      spawn,
@@ -179,6 +186,7 @@ static const Key keys[] = {
     {MODKEY, XKB_KEY_Return, zoom, {0}},
     {MODKEY, XKB_KEY_Tab, view, {0}},
     {MODKEY, XKB_KEY_q, killclient, {0}},
+    // Layouts
     {MODKEY, XKB_KEY_t, setlayout, {.v = &layouts[0]}},
     {MODKEY, XKB_KEY_n, setlayout, {.v = &layouts[1]}},
     {MODKEY, XKB_KEY_m, setlayout, {.v = &layouts[2]}},

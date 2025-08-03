@@ -7,6 +7,7 @@ static const int sloppyfocus = 1; /* focus follows mouse */
 static const int bypass_surface_visibility =
     0; /* 1 means idle inhibitors will disable idle tracking even if it's
           surface isn't visible  */
+static const int smartborders              = 1;
 static const unsigned int borderpx = 1; /* border pixel of windows */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
@@ -75,6 +76,10 @@ static const struct xkb_rule_names xkb_rules = {
     */
     .options = NULL,
 };
+
+/* numlock and capslock */
+static const int numlock = 1;
+static const int capslock = 0;
 
 static const int repeat_rate = 25;
 static const int repeat_delay = 600;

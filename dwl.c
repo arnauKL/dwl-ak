@@ -15,6 +15,7 @@
 #include <wayland-server-core.h>
 #include <wlr/backend.h>
 #include <wlr/backend/libinput.h>
+#include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/interfaces/wlr_buffer.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
@@ -384,7 +385,7 @@ static void rendermon(struct wl_listener *listener, void *data);
 static void requestdecorationmode(struct wl_listener *listener, void *data);
 static void requeststartdrag(struct wl_listener *listener, void *data);
 static void requestmonstate(struct wl_listener *listener, void *data);
-static void resize(Client *c, struct wlr_box geo, int interact);
+static void resize(Client *c, struct wlr_box geo, int interact, int draw_borders);
 static void run(char *startup_cmd);
 static void setcursor(struct wl_listener *listener, void *data);
 static void setcursorshape(struct wl_listener *listener, void *data);
@@ -425,6 +426,7 @@ static void zoom(const Arg *arg);
 /* variables */
 static pid_t child_pid = -1;
 static int locked;
+static uint32_t locked_mods = 0;
 static void *exclusive_focus;
 static struct wl_display *dpy;
 static struct wl_event_loop *event_loop;
@@ -977,12 +979,9 @@ void closemon(Monitor *m) {
 
     wl_list_for_each(c, &clients, link) {
         if (c->isfloating && c->geom.x > m->m.width)
-            resize(c,
-                    (struct wlr_box){.x = c->geom.x - m->w.width,
+            resize(c, (struct wlr_box){.x = c->geom.x - m->w.width,
                     .y = c->geom.y,
-                    .width = c->geom.width,
-                    .height = c->geom.height},
-                    0);
+					.width = c->geom.width, .height = c->geom.height}, 0, 1);
         if (c->mon == m)
             setmon(c, selmon, c->tags);
     }
@@ -1052,7 +1051,11 @@ void commitnotify(struct wl_listener *listener, void *data) {
         return;
     }
 
-    resize(c, c->geom, (c->isfloating && !c->isfullscreen));
+	if (client_surface(c)->mapped && c->mon && c->mon->lt[c->mon->sellt]->arrange
+			&& !c->isfullscreen && !c->isfloating)
+		c->mon->lt[c->mon->sellt]->arrange(c->mon);
+	else
+		resize(c, c->geom, (c->isfloating && !c->isfullscreen), (c->isfloating && !c->isfullscreen));
 
     /* mark a pending resize as completed */
     if (c->resize && c->resize <= c->surface.xdg->current.configure_serial)
@@ -1110,6 +1113,9 @@ void createkeyboard(struct wlr_keyboard *keyboard) {
     /* Set the keymap to match the group keymap */
     wlr_keyboard_set_keymap(keyboard, kb_group->wlr_group->keyboard.keymap);
 
+    /* locked mods patch */
+	wlr_keyboard_notify_modifiers(keyboard, 0, 0, locked_mods, 0);
+
     /* Add the new keyboard to the group */
     wlr_keyboard_group_add_keyboard(kb_group->wlr_group, keyboard);
 }
@@ -1129,6 +1135,21 @@ KeyboardGroup *createkeyboardgroup(void) {
         die("failed to compile keymap");
 
     wlr_keyboard_set_keymap(&group->wlr_group->keyboard, keymap);
+
+ 	if (numlock) {
+ 		xkb_mod_index_t mod_index = xkb_keymap_mod_get_index(keymap, XKB_MOD_NAME_NUM);
+ 		if (mod_index != XKB_MOD_INVALID)
+ 			locked_mods |= (uint32_t)1 << mod_index;
+ 	}
+ 
+ 	if (capslock) {
+ 		xkb_mod_index_t mod_index = xkb_keymap_mod_get_index(keymap, XKB_MOD_NAME_CAPS);
+ 		if (mod_index != XKB_MOD_INVALID)
+ 			locked_mods |= (uint32_t)1 << mod_index;
+ 	}
+ 
+ 	if (locked_mods)
+ 		wlr_keyboard_notify_modifiers(&group->wlr_group->keyboard, 0, 0, locked_mods, 0);
     xkb_keymap_unref(keymap);
     xkb_context_unref(context);
 
@@ -1568,24 +1589,17 @@ void drawbar(Monitor *m) {
     }
 
     wl_list_for_each(c, &clients, link) {
-        if (c->mon != m)
-            continue;
+        if (c->mon != m) continue;
         occ |= c->tags;
-        if (c->isurgent)
-            urg |= c->tags;
+        if (c->isurgent) urg |= c->tags;
     }
     x = 0;
     c = focustop(m);
     for (i = 0; i < LENGTH(tags); i++) {
         w = TEXTW(m, tags[i]);
-        drwl_setscheme(
-                m->drw,
-                colors[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
-        drwl_text(m->drw, x, 0, w, m->b.height, m->lrpad / 2, tags[i],
-                urg & 1 << i);
-        if (occ & 1 << i)
-            drwl_rect(m->drw, x + boxs, boxs, boxw, boxw,
-                    m == selmon && c && c->tags & 1 << i, urg & 1 << i);
+        drwl_setscheme(m->drw, colors[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+        drwl_text(m->drw, x, 0, w, m->b.height, m->lrpad / 2, tags[i], urg & 1 << i);
+        if (occ & 1 << i) drwl_rect(m->drw, x + boxs, boxs, boxw, boxw, m == selmon && c && c->tags & 1 << i, urg & 1 << i);
         x += w;
     }
     w = TEXTW(m, m->ltsymbol);
@@ -1594,22 +1608,17 @@ void drawbar(Monitor *m) {
 
     if ((w = m->b.width - tw - x) > m->b.height) {
         if (c) {
-            drwl_setscheme(m->drw, colors[m == selmon ? SchemeSel : SchemeNorm]);
-            drwl_text(m->drw, x, 0, w, m->b.height, m->lrpad / 2, client_get_title(c),
-                    0);
-            if (c && c->isfloating)
-                drwl_rect(m->drw, x + boxs, boxs, boxw, boxw, 0, 0);
+            //drwl_setscheme(m->drw, colors[m == selmon ? SchemeSel : SchemeNorm]); // Commented out by ak to have  black background on bar text
+            drwl_text(m->drw, x, 0, w, m->b.height, m->lrpad / 2, client_get_title(c), 0);
+            if (c && c->isfloating) drwl_rect(m->drw, x + boxs, boxs, boxw, boxw, 0, 0);
         } else {
             drwl_setscheme(m->drw, colors[SchemeNorm]);
             drwl_rect(m->drw, x, 0, w, m->b.height, 1, 1);
         }
     }
 
-    wlr_scene_buffer_set_dest_size(m->scene_buffer, m->b.real_width,
-            m->b.real_height);
-    wlr_scene_node_set_position(
-            &m->scene_buffer->node, m->m.x,
-            m->m.y + (topbar ? 0 : m->m.height - m->b.real_height));
+    wlr_scene_buffer_set_dest_size(m->scene_buffer, m->b.real_width, m->b.real_height);
+    wlr_scene_node_set_position(&m->scene_buffer->node, m->m.x, m->m.y + (topbar ? 0 : m->m.height - m->b.real_height));
     wlr_scene_buffer_set_buffer(m->scene_buffer, &buf->base);
     wlr_buffer_unlock(&buf->base);
 }
@@ -2030,7 +2039,7 @@ void monocle(Monitor *m) {
     wl_list_for_each(c, &clients, link) {
         if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
             continue;
-        resize(c, m->w, 0);
+		resize(c, m->w, 0, !smartborders);
         n++;
     }
     if (n)
@@ -2122,20 +2131,15 @@ void motionnotify(uint32_t time, struct wlr_input_device *device, double dx,
     /* If we are currently grabbing the mouse, handle and return */
     if (cursor_mode == CurMove) {
         /* Move the grabbed client to the new position. */
-        resize(grabc,
-                (struct wlr_box){.x = (int)round(cursor->x) - grabcx,
+        resize(grabc, (struct wlr_box){.x = (int)round(cursor->x) - grabcx,
                 .y = (int)round(cursor->y) - grabcy,
-                .width = grabc->geom.width,
-                .height = grabc->geom.height},
-                1);
+                .width = grabc->geom.width, .height = grabc->geom.height}, 1, 1);
         return;
     } else if (cursor_mode == CurResize) {
         resize(grabc,
                 (struct wlr_box){.x = grabc->geom.x,
                 .y = grabc->geom.y,
-                .width = (int)round(cursor->x) - grabc->geom.x,
-                .height = (int)round(cursor->y) - grabc->geom.y},
-                1);
+    			.width = (int)round(cursor->x) - grabc->geom.x, .height = (int)round(cursor->y) - grabc->geom.y}, 1, 1);
         return;
     }
 
@@ -2350,7 +2354,7 @@ void requestmonstate(struct wl_listener *listener, void *data) {
     updatemons(NULL, NULL);
 }
 
-void resize(Client *c, struct wlr_box geo, int interact) {
+void resize(Client *c, struct wlr_box geo, int interact, int draw_borders) {
     struct wlr_box *bbox;
     struct wlr_box clip;
 
@@ -2361,6 +2365,7 @@ void resize(Client *c, struct wlr_box geo, int interact) {
 
     client_set_bounds(c, geo.width, geo.height);
     c->geom = geo;
+ 	c->bw = draw_borders ? borderpx : 0;
     applybounds(c, bbox);
 
     /* Update scene-graph, including borders */
@@ -2466,8 +2471,9 @@ void setfloating(Client *c, int floating) {
         return;
     wlr_scene_node_reparent(
             &c->scene->node, layers[c->isfullscreen || (p && p->isfullscreen) ? LyrFS
-            : c->isfloating ? LyrFloat
-            : LyrTile]);
+            : c->isfloating ? LyrFloat : LyrTile]);
+	if (c->isfloating && !c->bw)
+		resize(c, c->mon->m, 0, 1);
     arrange(c->mon);
     drawbars();
 }
@@ -2484,11 +2490,11 @@ void setfullscreen(Client *c, int fullscreen) {
 
     if (fullscreen) {
         c->prev = c->geom;
-        resize(c, c->mon->m, 0);
+        resize(c, c->mon->m, 0, 0);
     } else {
         /* restore previous size instead of arrange for floating windows since
          * client positions are set by the user and cannot be recalculated */
-        resize(c, c->prev, 0);
+        resize(c, c->prev, 0, 1);
     }
     arrange(c->mon);
     drawbars();
@@ -2503,6 +2509,12 @@ void setlayout(const Arg *arg) {
         selmon->lt[selmon->sellt] = (Layout *)arg->v;
     strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol,
             LENGTH(selmon->ltsymbol));
+	if (!selmon->lt[selmon->sellt]->arrange) {
+		/* floating layout, draw borders around all clients */
+		Client *c;
+		wl_list_for_each(c, &clients, link)
+			resize(c, c->mon->m, 0, 1);
+	}
     arrange(selmon);
     drawbar(selmon);
 }
@@ -2533,7 +2545,7 @@ void setmon(Client *c, Monitor *m, uint32_t newtags) {
         arrange(oldmon);
     if (m) {
         /* Make sure window actually overlaps with the monitor */
-        resize(c, c->geom, 0);
+        resize(c, c->geom, 0, 1);
         c->tags = newtags
             ? newtags
             : m->tagset[m->seltags]; /* assign tags of target monitor */
@@ -2853,7 +2865,7 @@ void tagmon(const Arg *arg) {
 }
 
 void tile(Monitor *m) {
-    unsigned int mw, my, ty;
+    unsigned int mw, my, ty, draw_borders = 1;
     int i, n = 0;
     Client *c;
 
@@ -2861,6 +2873,9 @@ void tile(Monitor *m) {
             !c->isfullscreen) n++;
     if (n == 0)
         return;
+
+	if (n == smartborders)
+		draw_borders = 0;
 
     if (n > m->nmaster)
         mw = m->nmaster ? (int)roundf(m->w.width * m->mfact) : 0;
@@ -2871,21 +2886,13 @@ void tile(Monitor *m) {
         if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
             continue;
         if (i < m->nmaster) {
-            resize(c,
-                    (struct wlr_box){.x = m->w.x,
-                    .y = m->w.y + my,
-                    .width = mw,
-                    .height = (m->w.height - my) /
-                    (MIN(n, m->nmaster) - i)},
-                    0);
+            resize(c, (struct wlr_box){.x = m->w.x, .y = m->w.y + my, .width = mw,
+                    .height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0, draw_borders);
             my += c->geom.height;
         } else {
             resize(c,
-                    (struct wlr_box){.x = m->w.x + mw,
-                    .y = m->w.y + ty,
-                    .width = m->w.width - mw,
-                    .height = (m->w.height - ty) / (n - i)},
-                    0);
+                    (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty,
+    				.width = m->w.width - mw, .height = (m->w.height - ty) / (n - i)}, 0, draw_borders);
             ty += c->geom.height;
         }
         i++;
@@ -3048,7 +3055,7 @@ void updatemons(struct wl_listener *listener, void *data) {
         arrange(m);
         /* make sure fullscreen clients have the right size */
         if ((c = focustop(m)) && c->isfullscreen)
-            resize(c, m->m, 0);
+            resize(c, m->m, 0, 0);
 
         /* Try to re-set the gamma LUT when updating monitors,
          * it's only really needed when enabling a disabled output, but meh. */
@@ -3286,8 +3293,7 @@ void configurex11(struct wl_listener *listener, void *data) {
                 (struct wlr_box){.x = event->x - c->bw,
                 .y = event->y - c->bw,
                 .width = event->width + c->bw * 2,
-                .height = event->height + c->bw * 2},
-                0);
+				.height = event->height + c->bw * 2}, 0, 1);
     } else {
         arrange(c->mon);
     }
