@@ -14,5 +14,8 @@ philosophy. Like dwm, dwl is:
 ## Patches
 
 - [`dwl-bar`](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/bar): uses `slstatus` to output info into dwl, which now has a bar.
-- `wallust` integration: added a way to re-compile dwl using wallust to generate a theme (`dwl-colors.h`) (homemade).
+- ~`wallust` integration: added a way to re-compile dwl using wallust to generate a theme (`dwl-colors.h`) (homemade).~ unused
 - mouse warping: similar to hyprland. When changing focus with Alt+J / Alt+K, have the mouse warp to the center of the new client (homemade).
+- [numlock](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/numlock-capslock): by default, nulock is on.
+- [swallow](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/swallow): terminals spawning GUIs are *swallowed* (GUI takes over terminal window)
+- [smartborders](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/smartborders): skips drawing borders if there is only one client in the workspace.
