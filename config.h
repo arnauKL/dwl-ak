@@ -29,7 +29,7 @@ static const float rootcolor[] = COLOR(0x000000ff);
 static uint32_t colors[][3] = {
     /*               fg          bg          border    */
     [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x111111ff},
-    [SchemeSel] = {0xeeeeeeff, 0x333333ff, 0x444444ff},
+    [SchemeSel] = {0xffffffff, 0x444444ff, 0x444444ff},
     [SchemeUrg] = {0, 0, 0x770000ff},
 };
 
@@ -253,19 +253,19 @@ static const Key keys[] = {
     CHVT(12),
     /* Media keys */
     {0,
-     XF86XK_AudioRaiseVolume,
+     XF86XK_AudioRaiseVolume, /* pactl set-sink-volume @DEFAULT_SINK@ +5% */
      spawn,
-     {.v = (const char *[]){"wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@",
-                            "5%+", NULL}}},
+     {.v = (const char *[]){"pactl", "set-sink-volume", "@DEFAULT_SINK@",
+                            "+5%", NULL}}},
     {0,
      XF86XK_AudioLowerVolume,
      spawn,
-     {.v = (const char *[]){"wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@",
-                            "5%-", NULL}}},
+     {.v = (const char *[]){"pactl", "set-sink-volume", "@DEFAULT_SINK@",
+                            "-5%", NULL}}},
     {0,
      XF86XK_AudioMute,
      spawn,
-     {.v = (const char *[]){"wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@",
+     {.v = (const char *[]){"pactl", "set-sink-mute", "@DEFAULT_SINK@",
                             "toggle", NULL}}},
     {0,
      XF86XK_MonBrightnessUp,
