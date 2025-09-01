@@ -10,27 +10,29 @@ static const int sloppyfocus               = 1; /* focus follows mouse */
 static const int bypass_surface_visibility = 0; /* 1 means idle inhibitors will disable idle tracking even if it's
                                                    surface isn't visible  */
 static const int          smartborders = 1;
-static const unsigned int borderpx     = 1; /* border pixel of windows */
+static const unsigned int borderpx     = 2; /* border pixel of windows */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
-static const int          smartgaps       = 0; /* 1 means no outer gap when there is only one window */
-static int                gaps            = 0; /* 1 means gaps between windows are added */
-static const unsigned int gappx           = 6; /* gap pixel between windows */
+static const int          smartgaps       = 0;  /* 1 means no outer gap when there is only one window */
+static int                gaps            = 0;  /* 1 means gaps between windows are added */
+static const unsigned int gappx           = 26; /* gap pixel between windows */
 static const float        fullscreen_bg[] = {0.0f, 0.0f, 0.0f, 1.0f}; /* You can also use glsl colors */
 
 static int   enableautoswallow = 1;    /* enables autoswallowing newly spawned clients */
 static float swallowborder     = 1.0f; /* add this multiplied by borderpx to border
                                           when a client is swallowed */
-static const int   showbar     = 1;    /* 0 means no bar */
-static const int   topbar      = 0;    /* 0 means bottom bar */
-static const char *fonts[]     = {"Tamsyn:size=10"};
+static const int showbar = 0;          /* 0 means no bar */
+static const int topbar  = 0;          /* 0 means bottom bar */
+// static const char *fonts[]     = {"CaskaydiaCove NF:size=8", "monospace:size=10"};
+static const char *fonts[]     = {"monospace:size=9:style=Bold"};
 static const float rootcolor[] = COLOR(0x000000ff);
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
 static uint32_t colors[][3] = {
     /*               fg          bg          border    */
     [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x111111ff},
-    [SchemeSel]  = {0xffffffff, 0x444444ff, 0x666666ff},
+    [SchemeSel]  = {0xffffffff, 0x555555ff, 0x444444ff}, // aic unplugged bg
+    //[SchemeSel]  = {0xffffffff, 0x555555ff, 0x443854ff}, // aic unplugged bg
     // [SchemeSel] = {0xffffffff, WALLUST_BG, WALLUST_COL3},
     [SchemeUrg] = {0, 0, 0x770000ff},
 };
@@ -55,6 +57,8 @@ static const Rule rules[] = {
        noswallow   monitor */
     /* examples: */
     {"foot", NULL, 0, 0, 1, 1, -1},
+    {"blueman-manager", NULL, 0, 1, 0, 1, -1},
+    {"spotify", NULL, 0, 1, 0, 1, -1},
     {"Gimp_EXAMPLE", NULL, 0, 1, 0, 0, -1},         /* Start on currently visible tags floating, not tiled */
     {"firefox_EXAMPLE", NULL, 1 << 8, 0, 0, 0, -1}, /* Start on ONLY tag "9" */
 };
@@ -81,7 +85,7 @@ static const MonitorRule monrules[] = {
     -1,  -1 },
     */
     /* defaults */
-    {NULL, 0.55f, 1, 1, &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL, -1, -1},
+    {NULL, 0.45f, 1, 1, &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL, -1, -1},
 };
 
 /* keyboard */
@@ -161,11 +165,14 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 
 /* commands */
 static const char *termcmd[]        = {"foot", NULL};
-static const char *menucmd[]        = {"wmenu-run", "-b", "-i",       "-f", "Iosevka 8", "-N",
-                                       "000000",    "-S", "bbbbbbff", "-s", "000000ff",  NULL};
-static const char *screenshotcmd[]  = {"grimshot", "copy", "area", NULL}; // for me only
-static const char *filemanagercmd[] = {"foot", "lf", NULL};               // for me only
-static const char *browsercmd[]     = {"luakit", NULL};                   // for me only
+static const char *menucmd[]        = {"wmenu-run", "-b", "-i",       "-f", "monospace bold 9", "-N",
+                                       "000000",    "-S", "bbbbbbff", "-s", "000000ff",         NULL};
+static const char *screenshotcmd[]  = {"grimshot", "savecopy", "area", NULL};
+static const char *pdt_notifycmd[]  = {"pdt_notify", NULL};
+static const char *filemanagercmd[] = {"foot", "lf", NULL};
+static const char *browsercmd[]     = {"luakit", NULL};
+static const char *tor_browsercmd[] = {"torbrowser-launcher", NULL};
+static const char *toggle_bgcmd[]   = {"sh", "/home/ak/scripts/toggle-swaybg.sh", NULL};
 
 // clang-format off
 static const Key keys[] = {
@@ -175,7 +182,10 @@ static const Key keys[] = {
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_Return, spawn,      {.v = termcmd}},
     {MODKEY,                                    XKB_KEY_e,      spawn,      {.v = filemanagercmd}},
     {MODKEY,                                    XKB_KEY_w,      spawn,      {.v = browsercmd}},
+    {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_W,      spawn,      {.v = tor_browsercmd}},
     {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT,    XKB_KEY_S,      spawn,      {.v = screenshotcmd}},
+    {WLR_MODIFIER_LOGO,                         XKB_KEY_p,      spawn,      {.v = pdt_notifycmd}},
+    {WLR_MODIFIER_LOGO,                         XKB_KEY_b,      spawn,      {.v = toggle_bgcmd}},
     {MODKEY,                                    XKB_KEY_b,      togglebar,  {0}},   // Toggle bar visibility
     {MODKEY,                                    XKB_KEY_j,      focusstack, {.i = +1}}, // Change focus up
     {MODKEY,                                    XKB_KEY_k,      focusstack, {.i = -1}}, // Change focus down
@@ -183,6 +193,7 @@ static const Key keys[] = {
     {MODKEY,                                    XKB_KEY_d,      incnmaster, {.i = -1}}, // Remove master from layout
     {MODKEY,                                    XKB_KEY_h,      setmfact,   {.f = -0.05f}}, // Resize
     {MODKEY,                                    XKB_KEY_l,      setmfact,   {.f = +0.05f}}, // Resize
+    {MODKEY,                                    XKB_KEY_ntilde, setmfact,   {.f = 1.5f}}, // Resize
     
     {MODKEY,                                    XKB_KEY_Return, zoom,       {0}},   // Move selected client to master position
     {MODKEY,                                    XKB_KEY_Tab,    view,       {0}},   // View 0th tag
@@ -235,6 +246,7 @@ static const Key keys[] = {
 /* Ctrl-Alt-Fx is used to switch to another VT, if you don't know what a VT is
  * do not remove them.
  */
+
 #define CHVT(n)                                                                                                        \
     {                                                                                                                  \
         WLR_MODIFIER_CTRL | WLR_MODIFIER_ALT,   XKB_KEY_XF86Switch_VT_##n,      chvt,   { .ui = (n) }                           \

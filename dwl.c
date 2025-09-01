@@ -566,6 +566,10 @@ void applyrules(Client *c) {
         }
     }
 
+    if (mon) {
+        c->geom.x = (mon->w.width - c->geom.width) / 2 + mon->m.x;
+        c->geom.y = (mon->w.height - c->geom.height) / 2 + mon->m.y;
+    }
     c->isfloating |= client_is_float_type(c); /*This line did not exist in the swallow patch*/
                                               /* If something breaks, check this order*/
     if (enableautoswallow && !c->noswallow && !c->isfloating && !c->surface.xdg->initial_commit) {
@@ -1514,8 +1518,8 @@ void drawbar(Monitor *m) {
 
     if ((w = m->b.width - tw - x) > m->b.height) {
         if (c) {
-            // drwl_setscheme(m->drw, colors[m == selmon ? SchemeSel : SchemeNorm]);
-            // // Commented out by ak to have  black background on bar text
+            // drwl_setscheme(m->drw, colors[m == selmon ? SchemeSel : SchemeNorm]); // ak: can be commented out to have
+            //  black background on bar text
             drwl_text(m->drw, x, 0, w, m->b.height, m->lrpad / 2, client_get_title(c), 0);
             if (c && c->isfloating) drwl_rect(m->drw, x + boxs, boxs, boxw, boxw, 0, 0);
         } else {
@@ -1873,6 +1877,11 @@ void mapnotify(struct wl_listener *listener, void *data) {
      * If there is no parent, apply rules */
     if ((p = client_get_parent(c))) {
         c->isfloating = 1;
+
+        if (p->mon) {
+            c->geom.x = (p->mon->w.width - c->geom.width) / 2 + p->mon->m.x;
+            c->geom.y = (p->mon->w.height - c->geom.height) / 2 + p->mon->m.y;
+        }
         setmon(c, p->mon, p->tags);
     } else {
         applyrules(c);
@@ -2785,9 +2794,11 @@ void tile(Monitor *m) {
         } else {
             r = n - i;
             h = (m->w.height - ty - gappx * e - gappx * e * (r - 1)) / r;
-            resize(c, (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty, .width = m->w.width - mw, .height = h}, 0,
-                   draw_borders);
-            ty += c->geom.height;
+            resize(
+                c,
+                (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty, .width = m->w.width - mw - gappx * e, .height = h},
+                0, draw_borders);
+            ty += c->geom.height + gappx * e;
         }
         i++;
     }
