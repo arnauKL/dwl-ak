@@ -10,18 +10,18 @@ static const int sloppyfocus               = 1; /* focus follows mouse */
 static const int bypass_surface_visibility = 0; /* 1 means idle inhibitors will disable idle tracking even if it's
                                                    surface isn't visible  */
 static const int          smartborders = 1;
-static const unsigned int borderpx     = 2; /* border pixel of windows */
+static const unsigned int borderpx     = 0; /* border pixel of windows */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
 static const int          smartgaps       = 0;  /* 1 means no outer gap when there is only one window */
-static int                gaps            = 0;  /* 1 means gaps between windows are added */
+static int                gaps            = 1;  /* 1 means gaps between windows are added */
 static const unsigned int gappx           = 26; /* gap pixel between windows */
 static const float        fullscreen_bg[] = {0.0f, 0.0f, 0.0f, 1.0f}; /* You can also use glsl colors */
 
 static int   enableautoswallow = 1;    /* enables autoswallowing newly spawned clients */
 static float swallowborder     = 1.0f; /* add this multiplied by borderpx to border
                                           when a client is swallowed */
-static const int showbar = 0;          /* 0 means no bar */
+static const int showbar = 1;          /* 0 means no bar */
 static const int topbar  = 0;          /* 0 means bottom bar */
 // static const char *fonts[]     = {"CaskaydiaCove NF:size=8", "monospace:size=10"};
 static const char *fonts[]     = {"monospace:size=9:style=Bold"};
@@ -30,9 +30,11 @@ static const float rootcolor[] = COLOR(0x000000ff);
  * behavior */
 static uint32_t colors[][3] = {
     /*               fg          bg          border    */
-    [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x111111ff},
-    [SchemeSel]  = {0xffffffff, 0x555555ff, 0x444444ff}, // aic unplugged bg
-    //[SchemeSel]  = {0xffffffff, 0x555555ff, 0x443854ff}, // aic unplugged bg
+    [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x111111ff}, // dark mode
+    //[SchemeNorm] = {0x000000ff, 0xbbbbbbff, 0x444444ff}, // light mode
+    //[SchemeSel]  = {0xffffffff, 0x555555ff, 0x444444ff}, // neutral grays dark mode
+    //[SchemeSel] = {0x000000ff, 0xffffffff, 0x000000ff}, // light mode
+    [SchemeSel] = {0xffffffff, 0x555555ff, 0x443854ff}, // aic unplugged bg
     // [SchemeSel] = {0xffffffff, WALLUST_BG, WALLUST_COL3},
     [SchemeUrg] = {0, 0, 0x770000ff},
 };

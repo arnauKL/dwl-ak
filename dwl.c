@@ -2340,7 +2340,18 @@ void setfloating(Client *c, int floating) {
     wlr_scene_node_reparent(&c->scene->node, layers[c->isfullscreen || (p && p->isfullscreen) ? LyrFS
                                                     : c->isfloating                           ? LyrFloat
                                                                                               : LyrTile]);
-    if (c->isfloating && !c->bw) resize(c, c->mon->m, 0, 1);
+    // Newly-made-floating clients will have half the size they had and be positioned where before
+    if (c->isfloating && !c->bw) {
+        resize(c,
+               (struct wlr_box){
+                   .x      = c->geom.x,
+                   .y      = c->geom.y,
+                   .width  = c->geom.width / 2,
+                   .height = c->geom.height / 2,
+               },
+               0, 1);
+    }
+
     arrange(c->mon);
     drawbars();
 }
