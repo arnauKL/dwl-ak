@@ -410,6 +410,7 @@ static void     urgent(struct wl_listener *listener, void *data);
 static void     view(const Arg *arg);
 static void     virtualkeyboard(struct wl_listener *listener, void *data);
 static void     virtualpointer(struct wl_listener *listener, void *data);
+static void     warpcursor(const Client *c);
 static Monitor *xytomon(double x, double y);
 static void     xytonode(double x, double y, struct wlr_surface **psurface, Client **pc, LayerSurface **pl, double *nx,
                          double *ny);
@@ -608,6 +609,7 @@ void arrange(Monitor *m) {
     if (m->lt[m->sellt]->arrange) m->lt[m->sellt]->arrange(m);
     motionnotify(0, NULL, 0, 0, 0, 0);
     checkidleinhibitor(NULL);
+    warpcursor(focustop(selmon));
 }
 
 void arrangelayer(Monitor *m, struct wl_list *list, struct wlr_box *usable_area, int exclusive) {
@@ -1548,6 +1550,9 @@ void focusclient(Client *c, int lift) {
 
     if (locked) return;
 
+    /* Warp cursor to center of client if it is outside */
+    if (lift) warpcursor(c);
+
     /* Raise client in stacking order if requested */
     if (c && lift) wlr_scene_node_raise_to_top(&c->scene->node);
 
@@ -1634,13 +1639,6 @@ void focusstack(const Arg *arg) {
     }
     /* If only one client is visible on selmon, then c == sel */
     focusclient(c, 1);
-
-    /* Warp the mouse to the center of the new client*/
-    if (c && !client_is_unmanaged(c)) {
-        struct wlr_box client_box;
-        client_get_geometry(c, &client_box); // Get client's geometry
-        wlr_cursor_warp(cursor, NULL, c->geom.x + c->geom.width / 2.0, c->geom.y + c->geom.height / 2.0);
-    }
 }
 
 /* We probably should change the name of this: it sounds like it
@@ -2340,7 +2338,6 @@ void setfloating(Client *c, int floating) {
     wlr_scene_node_reparent(&c->scene->node, layers[c->isfullscreen || (p && p->isfullscreen) ? LyrFS
                                                     : c->isfloating                           ? LyrFloat
                                                                                               : LyrTile]);
-    // Newly-made-floating clients will have half the size they had and be positioned where before
     if (c->isfloating && !c->bw) {
         resize(c,
                (struct wlr_box){
@@ -2737,6 +2734,7 @@ void tag(const Arg *arg) {
     sel->tags = arg->ui & TAGMASK;
     focusclient(focustop(selmon), 1);
     arrange(selmon);
+    view(arg);
     drawbars();
 }
 
@@ -3094,6 +3092,17 @@ void virtualpointer(struct wl_listener *listener, void *data) {
 
     wlr_cursor_attach_input_device(cursor, device);
     if (event->suggested_output) wlr_cursor_map_input_to_output(cursor, device, event->suggested_output);
+}
+
+void warpcursor(const Client *c) {
+
+    if (cursor_mode != CurNormal) { return; }
+    if (!c && selmon) {
+        wlr_cursor_warp_closest(cursor, NULL, selmon->w.x + selmon->w.width / 2.0,
+                                selmon->w.y + selmon->w.height / 2.0);
+    } else if (c && (cursor->x < c->geom.x || cursor->x > c->geom.x + c->geom.width || cursor->y < c->geom.y ||
+                     cursor->y > c->geom.y + c->geom.height))
+        wlr_cursor_warp_closest(cursor, NULL, c->geom.x + c->geom.width / 2.0, c->geom.y + c->geom.height / 2.0);
 }
 
 Monitor *xytomon(double x, double y) {

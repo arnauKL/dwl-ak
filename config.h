@@ -9,7 +9,7 @@
 static const int sloppyfocus               = 1; /* focus follows mouse */
 static const int bypass_surface_visibility = 0; /* 1 means idle inhibitors will disable idle tracking even if it's
                                                    surface isn't visible  */
-static const int          smartborders = 1;
+static const int          smartborders = 0;
 static const unsigned int borderpx     = 0; /* border pixel of windows */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
  * behavior */
@@ -30,11 +30,11 @@ static const float rootcolor[] = COLOR(0x000000ff);
  * behavior */
 static uint32_t colors[][3] = {
     /*               fg          bg          border    */
-    [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x111111ff}, // dark mode
+    [SchemeNorm] = {0xbbbbbbff, 0x000000ff, 0x000000ff}, // dark mode
     //[SchemeNorm] = {0x000000ff, 0xbbbbbbff, 0x444444ff}, // light mode
     //[SchemeSel]  = {0xffffffff, 0x555555ff, 0x444444ff}, // neutral grays dark mode
     //[SchemeSel] = {0x000000ff, 0xffffffff, 0x000000ff}, // light mode
-    [SchemeSel] = {0xffffffff, 0x555555ff, 0x443854ff}, // aic unplugged bg
+    [SchemeSel] = {0x000000ff, 0xbbbbbbff, 0xbbbbbbff},
     // [SchemeSel] = {0xffffffff, WALLUST_BG, WALLUST_COL3},
     [SchemeUrg] = {0, 0, 0x770000ff},
 };
