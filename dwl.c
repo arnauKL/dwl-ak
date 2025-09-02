@@ -161,7 +161,7 @@ struct Client {
 #endif
     unsigned int bw;
     uint32_t     tags;
-    int          isfloating, isurgent, isfullscreen;
+    int          isfloating, isurgent, isfullscreen, isfakefullscreen;
     int          isterm, noswallow;
     uint32_t     resize; /* configure serial of a pending resize */
     pid_t        pid;
@@ -378,6 +378,7 @@ static void     setcursor(struct wl_listener *listener, void *data);
 static void     setcursorshape(struct wl_listener *listener, void *data);
 static void     setfloating(Client *c, int floating);
 static void     setfullscreen(Client *c, int fullscreen);
+static void     setfakefullscreen(Client *c, int fullscreen);
 static void     setlayout(const Arg *arg);
 static void     setmfact(const Arg *arg);
 static void     setmon(Client *c, Monitor *m, uint32_t newtags);
@@ -395,6 +396,7 @@ static void     tile(Monitor *m);
 static void     togglebar(const Arg *arg);
 static void     togglefloating(const Arg *arg);
 static void     togglefullscreen(const Arg *arg);
+static void     togglefakefullscreen(const Arg *arg);
 static void     toggleswallow(const Arg *arg);
 static void     toggleautoswallow(const Arg *arg);
 static void     togglegaps(const Arg *arg);
@@ -465,6 +467,7 @@ static KeyboardGroup   *kb_group;
 static unsigned int     cursor_mode;
 static Client          *grabc;
 static int              grabcx, grabcy; /* client-relative */
+static int              rzcorner;       /* better-resize patch */
 
 static struct wlr_output_layout *output_layout;
 static struct wlr_box            sgeom;
@@ -2002,12 +2005,25 @@ void motionnotify(uint32_t time, struct wlr_input_device *device, double dx, dou
                1, 1);
         return;
     } else if (cursor_mode == CurResize) {
-        resize(grabc,
-               (struct wlr_box){.x      = grabc->geom.x,
-                                .y      = grabc->geom.y,
-                                .width  = (int)round(cursor->x) - grabc->geom.x,
-                                .height = (int)round(cursor->y) - grabc->geom.y},
-               1, 1);
+        int cdx = (int)round(cursor->x) - grabcx;
+        int cdy = (int)round(cursor->y) - grabcy;
+
+        cdx = !(rzcorner & 1) && grabc->geom.width - 2 * (int)grabc->bw - cdx < 1 ? 0 : cdx;
+        cdy = !(rzcorner & 2) && grabc->geom.height - 2 * (int)grabc->bw - cdy < 1 ? 0 : cdy;
+
+        const struct wlr_box box = {.x      = grabc->geom.x + (rzcorner & 1 ? 0 : cdx),
+                                    .y      = grabc->geom.y + (rzcorner & 2 ? 0 : cdy),
+                                    .width  = grabc->geom.width + (rzcorner & 1 ? cdx : -cdx),
+                                    .height = grabc->geom.height + (rzcorner & 2 ? cdy : -cdy)};
+        resize(grabc, box, 1, 1);
+
+        if (!lock_cursor) {
+            grabcx += cdx;
+            grabcy += cdy;
+        } else {
+            wlr_cursor_warp_closest(cursor, NULL, grabcx, grabcy);
+        }
+
         return;
     }
 
@@ -2046,10 +2062,23 @@ void moveresize(const Arg *arg) {
         wlr_cursor_set_xcursor(cursor, cursor_mgr, "all-scroll");
         break;
     case CurResize:
-        /* Doesn't work for X11 output - the next absolute motion event
-         * returns the cursor to where it started */
-        wlr_cursor_warp_closest(cursor, NULL, grabc->geom.x + grabc->geom.width, grabc->geom.y + grabc->geom.height);
-        wlr_cursor_set_xcursor(cursor, cursor_mgr, "se-resize");
+        const char *cursors[] = {"nw-resize", "ne-resize", "sw-resize", "se-resize"};
+
+        rzcorner = resize_corner;
+        grabcx   = (int)round(cursor->x);
+        grabcy   = (int)round(cursor->y);
+
+        if (rzcorner == 4) /* identify the closest corner index */
+            rzcorner = (grabcx - grabc->geom.x < grabc->geom.x + grabc->geom.width - grabcx ? 0 : 1) +
+                       (grabcy - grabc->geom.y < grabc->geom.y + grabc->geom.height - grabcy ? 0 : 2);
+
+        if (warp_cursor) {
+            grabcx = rzcorner & 1 ? grabc->geom.x + grabc->geom.width : grabc->geom.x;
+            grabcy = rzcorner & 2 ? grabc->geom.y + grabc->geom.height : grabc->geom.y;
+            wlr_cursor_warp_closest(cursor, NULL, grabcx, grabcy);
+        }
+
+        wlr_cursor_set_xcursor(cursor, cursor_mgr, cursors[rzcorner]);
         break;
     }
 }
@@ -2338,17 +2367,7 @@ void setfloating(Client *c, int floating) {
     wlr_scene_node_reparent(&c->scene->node, layers[c->isfullscreen || (p && p->isfullscreen) ? LyrFS
                                                     : c->isfloating                           ? LyrFloat
                                                                                               : LyrTile]);
-    if (c->isfloating && !c->bw) {
-        resize(c,
-               (struct wlr_box){
-                   .x      = c->geom.x,
-                   .y      = c->geom.y,
-                   .width  = c->geom.width / 2,
-                   .height = c->geom.height / 2,
-               },
-               0, 1);
-    }
-
+    if (c->isfloating && !c->bw) resize(c, c->mon->m, 0, 1);
     arrange(c->mon);
     drawbars();
 }
@@ -2370,6 +2389,13 @@ void setfullscreen(Client *c, int fullscreen) {
     }
     arrange(c->mon);
     drawbars();
+}
+
+void setfakefullscreen(Client *c, int fullscreen) {
+    c->isfakefullscreen = fullscreen;
+    if (!c->mon) return;
+    if (c->isfullscreen) setfullscreen(c, 0);
+    client_set_fullscreen(c, fullscreen);
 }
 
 void setlayout(const Arg *arg) {
@@ -2827,6 +2853,11 @@ void togglefloating(const Arg *arg) {
 void togglefullscreen(const Arg *arg) {
     Client *sel = focustop(selmon);
     if (sel) setfullscreen(sel, !sel->isfullscreen);
+}
+
+void togglefakefullscreen(const Arg *arg) {
+    Client *sel = focustop(selmon);
+    if (sel) setfakefullscreen(sel, !sel->isfakefullscreen);
 }
 
 void toggleswallow(const Arg *arg) {

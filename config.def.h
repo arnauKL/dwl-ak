@@ -35,6 +35,18 @@ static char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 /* logging */
 static int log_level = WLR_ERROR;
 
+/* window resizing (better-resize patch) */
+/* resize_corner:
+ * 0: top-left
+ * 1: top-right
+ * 2: bottom-left
+ * 3: bottom-right
+ * 4: closest to the cursor
+ */
+static const int resize_corner = 4;
+static const int warp_cursor   = 0; /* 1: warp to corner, 0: don’t warp */
+static const int lock_cursor   = 0; /* 1: lock cursor, 0: don't lock */
+
 /* NOTE: ALWAYS keep a rule declared even if you don't use rules (e.g leave at
  * least one example) */
 // static const Rule rules[] = {
@@ -177,6 +189,7 @@ static const Key keys[] = {
     {MODKEY, XKB_KEY_space, setlayout, {0}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_space, togglefloating, {0}},
     {MODKEY, XKB_KEY_e, togglefullscreen, {0}},
+    {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_E, togglefakefullscreen, {0}},
     {MODKEY, XKB_KEY_a, toggleswallow, {0}},
     {MODKEY | WLR_MODIFIER_SHIFT, XKB_KEY_A, toggleautoswallow, {0}},
     {MODKEY, XKB_KEY_0, view, {.ui = ~0}},
