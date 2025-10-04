@@ -1,63 +1,47 @@
 /* Taken from https://github.com/djpohly/dwl/issues/466 */
 
+// clang-format off
 #include <X11/XF86keysym.h> // So I can have media keys working
+#include "/home/ak/.cache/wal/colors-dwl.h" // pywal integration
 
-#define COLOR(hex)                                                            \
-    { ((hex >> 24) & 0xFF) / 255.0f, ((hex >> 16) & 0xFF) / 255.0f,           \
-      ((hex >> 8) & 0xFF) / 255.0f, (hex & 0xFF) / 255.0f }
+#define COLOR(hex) {                    \
+    ((hex >> 24) & 0xFF) / 255.0f,      \
+    ((hex >> 16) & 0xFF) / 255.0f,      \
+    ((hex >> 8) & 0xFF) / 255.0f,       \
+    (hex & 0xFF) / 255.0f               \
+}
+
 /* appearance */
-static const int sloppyfocus = 1; /* focus follows mouse */
-static const int bypass_surface_visibility
-    = 0; /* 1 means idle inhibitors will disable idle tracking even if it's
-            surface isn't visible  */
-static const int smartborders = 0;
-static const unsigned int borderpx = 0; /* border pixel of windows */
-/* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
- * behavior */
-static const int smartgaps
-    = 0;             /* 1 means no outer gap when there is only one window */
-static int gaps = 1; /* 1 means gaps between windows are added */
+static const int sloppyfocus                = 1; /* focus follows mouse */
+static const int bypass_surface_visibility  = 0; /* 1 means idle inhibitors will disable idle tracking even if it's surface isn't visible  */
+static const int smartborders               = 1;
+static const unsigned int borderpx          = 1; /* border pixel of windows */
+
+static const int smartgaps      = 0; /* 1 means no outer gap when there is only one window */
+static int gaps                 = 0; /* 1 means gaps between windows are added */
 static const unsigned int gappx = 24; /* gap pixel between windows */
-static const float fullscreen_bg[]
-    = { 0.0f, 0.0f, 0.0f, 1.0f }; /* You can also use glsl colors */
 
-static int enableautoswallow
-    = 1; /* enables autoswallowing newly spawned clients */
-static float swallowborder = 1.0f; /* add this multiplied by borderpx to border
-                                      when a client is swallowed */
 
-static const int smartbar = 0; /* TODO: Implement this: show bar when no
-                                  client, hide otherwise except Mod+b or sth*/
+static int enableautoswallow    = 1; /* enables autoswallowing newly spawned clients */
+static float swallowborder      = 1.0f; /* add this multiplied by borderpx to border when a client is swallowed */
 
-static const int showbar = 1; /* 0 means no bar */
-static const int topbar = 0;  /* 0 means bottom bar */
-// static const char *fonts[]     = {"CaskaydiaCove NF:size=8",
-// "monospace:size=10"};
-static const char *fonts[] = { "CaskaydiaCove NF:size=9:style=Bold" };
-#define DARK_MODE // Uncomment to enable dark mode colours
-static const float rootcolor[] = COLOR (0x000000ff);
-/* This conforms to the xdg-protocol. Set the alpha to zero to restore the old
- * behavior */
 
-// static uint32_t colors[][3] = {
-// /*               fg          bg          border    */
-// #ifdef DARK_MODE
-//     [SchemeNorm] = { 0xbbbbbbff, 0x000000ff, 0x333333ff },
-//     [SchemeSel] = { 0x000000ff, 0xbbbbbbff, 0x555555ff },
-// #else
-//     [SchemeNorm] = { 0x000000ff, 0xccccccff, 0x333333ff },
-//     [SchemeSel] = { 0xccccccff, 0x000000ff, 0x777777ff },
-// #endif
-//     [SchemeUrg] = { 0, 0, 0x770000ff },
-// };
+static const int showbar    = 0; /* 0 means no bar */
+static const int topbar     = 0;  /* 0 means bottom bar */
+static const char *fonts[]  = { "CaskaydiaCove NF:size=9:style=Bold" };
 
-#include "/home/ak/.cache/wal/colors-dwl.h"
 static uint32_t colors[][3] = {
-    /*               fg          bg          border    */
-    [SchemeNorm] = { COLOR3, BG, COLOR2 },
-    [SchemeSel] = { BG, COLOR2, COLOR3 },
+    /* [...] = {fg, bg, border} */
+    [SchemeNorm] = { COLOR3, BG, COLOR8 },
+    [SchemeSel] = { BG, COLOR2, COLOR2 },
     [SchemeUrg] = { 0, 0, 0x770000ff },
 };
+
+static const float rootcolor[] = COLOR (BG);
+//static const float rootcolor[] = COLOR (0x9a5400ff); // Brown-ish
+/* This conforms to the xdg-protocol. Set the alpha to zero to restore the old behavior */
+static const float fullscreen_bg[] = { 0.0f, 0.5f, 0.0f, 1.0f }; /* You can also use glsl colors */
+
 
 /* tagging - TAGCOUNT must be no greater than 31 */
 static char *tags[] = { "1", "2", "3", "4", "5" };
@@ -67,17 +51,7 @@ static int log_level = WLR_ERROR;
 
 /* NOTE: ALWAYS keep a rule declared even if you don't use rules (e.g leave
  * at least one example) */
-// static const Rule rules[] = {
-//     /* app_id             title       tags mask     isfloating   monitor
-//     */
-//     /* examples: */
-//     {"Gimp_EXAMPLE", NULL, 0, 1,
-//      -1}, /* Start on currently visible tags floating, not tiled */
-//     {"firefox_EXAMPLE", NULL, 1 << 8, 0, -1}, /* Start on ONLY tag "9"
-//     */
-// };
 
-// clang-format off
 static const Rule rules[] = {
     /* app_id               title       tags mask   isfloating  isterm  noswallow   monitor */
     /* examples: */
@@ -96,7 +70,6 @@ static const Layout layouts[] = {
     { "[M]", monocle },
     { "[]=", tile },
     { "><>", NULL }, /* no layout function means floating behavior */
-    //{ "[BSP]", bsp }, // Would this not be cool
 };
 
 /* monitors */
@@ -127,16 +100,18 @@ static const struct xkb_rule_names xkb_rules = {
 };
 
 /* numlock and capslock (from patch) */
-static const int numlock = 1;
-static const int capslock = 0;
+static const int numlock    = 1;
+static const int capslock   = 0;
 
-static const int repeat_rate = 40;
-static const int repeat_delay = 400;
+/* unclutter patch */
+static const int cursor_timeout = 5; // seconds?
 
+static const int repeat_rate    = 40;
+static const int repeat_delay   = 400;
 /* Trackpad */
-static const int tap_to_click = 1;
-static const int tap_and_drag = 1;
-static const int drag_lock = 1;
+static const int tap_to_click   = 1;
+static const int tap_and_drag   = 1;
+static const int drag_lock      = 1;
 static const int natural_scrolling = 1;
 static const int disable_while_typing = 1;
 static const int left_handed = 0;
@@ -218,7 +193,6 @@ static const char *random_light_bgcmd[]
     = { "/home/ak/scripts/random-wal.sh", "light", NULL };
 static const char *bat_notcmd[] = { "/home/ak/scripts/bat-notify.sh", NULL };
 
-// clang-format off
 static const Key keys[] = {
     /* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
     /* modifier(s)                              key             function    argument */
