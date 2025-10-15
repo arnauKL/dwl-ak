@@ -18,21 +18,21 @@ static const int smartborders               = 1;
 static const unsigned int borderpx          = 1; /* border pixel of windows */
 
 static const int smartgaps      = 0; /* 1 means no outer gap when there is only one window */
-static int gaps                 = 0; /* 1 means gaps between windows are added */
-static const unsigned int gappx = 24; /* gap pixel between windows */
+static int gaps                 = 1; /* 1 means gaps between windows are added */
+static const unsigned int gappx = 16; /* gap pixel between windows */
 
 
 static int enableautoswallow    = 1; /* enables autoswallowing newly spawned clients */
 static float swallowborder      = 1.0f; /* add this multiplied by borderpx to border when a client is swallowed */
 
 
-static const int showbar    = 0; /* 0 means no bar */
+static const int showbar    = 1; /* 0 means no bar */
 static const int topbar     = 0;  /* 0 means bottom bar */
 static const char *fonts[]  = { "CaskaydiaCove NF:size=9:style=Bold" };
 
 static uint32_t colors[][3] = {
     /* [...] = {fg, bg, border} */
-    [SchemeNorm] = { COLOR3, BG, COLOR8 },
+    [SchemeNorm] = { COLOR3, BG, BG },
     [SchemeSel] = { BG, COLOR2, COLOR2 },
     [SchemeUrg] = { 0, 0, 0x770000ff },
 };
@@ -44,7 +44,7 @@ static const float fullscreen_bg[] = { 0.0f, 0.5f, 0.0f, 1.0f }; /* You can also
 
 
 /* tagging - TAGCOUNT must be no greater than 31 */
-static char *tags[] = { "1", "2", "3", "4", "5" };
+static char *tags[] = { "1", "2", "3", "4", "5", "6", "7" };
 
 /* logging */
 static int log_level = WLR_ERROR;
@@ -56,8 +56,10 @@ static const Rule rules[] = {
     /* app_id               title       tags mask   isfloating  isterm  noswallow   monitor */
     /* examples: */
     { "foot",               NULL,       0,          0,          1,      1,          -1 },
-    {NULL,     "Spotify Premium",  1 << 3,          0,          0,      1,          -1 },
-    //{ "blueman-manager",    NULL,       0,          1,          0,      1,          -1 },
+    { NULL,    "Spotify Premium",  1 << 3,          0,          0,      1,          -1 },
+    { NULL,          "LibreWolf",  1 << 1,          0,          0,      1,          -1 },
+    { "blueman-manager",    NULL,       0,          1,          0,      1,          -1 },
+    { "SpeedCrunch",        NULL,       0,          1,          0,      1,          -1 },
     // { "Gimp_EXAMPLE", NULL, 0, 1, 0, 0,
     //   -1 }, /* Start on currently visible tags floating, not tiled */
     // { "firefox_EXAMPLE", NULL, 1 << 8, 0, 0, 0,
@@ -67,8 +69,8 @@ static const Rule rules[] = {
 /* layout(s) */
 static const Layout layouts[] = {
     /* symbol     arrange function */
-    { "[M]", monocle },
     { "[]=", tile },
+    { "[M]", monocle },
     { "><>", NULL }, /* no layout function means floating behavior */
 };
 
@@ -106,8 +108,10 @@ static const int capslock   = 0;
 /* unclutter patch */
 static const int cursor_timeout = 5; // seconds?
 
+/* Key repeat config */
 static const int repeat_rate    = 40;
 static const int repeat_delay   = 400;
+
 /* Trackpad */
 static const int tap_to_click   = 1;
 static const int tap_and_drag   = 1;
@@ -146,7 +150,7 @@ LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE
 */
 static const enum libinput_config_accel_profile accel_profile
     = LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE;
-static const double accel_speed = 0.0;
+static const double accel_speed = 0.3;
 
 /* You can choose between:
 LIBINPUT_CONFIG_TAP_MAP_LRM -- 1/2/3 finger tap maps to left/right/middle
@@ -220,8 +224,8 @@ static const Key keys[] = {
     {MODKEY,                                    XKB_KEY_Tab,    view,       {0}},   // View 0th tag
     {MODKEY,                                    XKB_KEY_q,      killclient, {0}},   // Kill client
     // Layouts
-    {MODKEY,                                    XKB_KEY_m,      setlayout,  {.v = &layouts[0]}},    // [0] is monocle
-    {MODKEY,                                    XKB_KEY_t,      setlayout,  {.v = &layouts[1]}},    // [1] is tile
+    {MODKEY,                                    XKB_KEY_m,      setlayout,  {.v = &layouts[1]}},    // [0] is monocle
+    {MODKEY,                                    XKB_KEY_t,      setlayout,  {.v = &layouts[0]}},    // [1] is tile
     {MODKEY,                                    XKB_KEY_n,      setlayout,  {.v = &layouts[2]}},    // [2] is null
     {MODKEY,                                    XKB_KEY_space,  setlayout,  {0}},   // No layout: floating
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_space,  togglefloating, {0}},   // No layout for current window
@@ -234,7 +238,7 @@ static const Key keys[] = {
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_equal,  tag,        {.ui = ~0}},
     {MODKEY,                                    XKB_KEY_comma,  focusmon,   {.i = WLR_DIRECTION_LEFT}},
     {MODKEY,                                    XKB_KEY_period, focusmon,   {.i = WLR_DIRECTION_RIGHT}},
-    {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_less,   tagmon,     {.i = WLR_DIRECTION_LEFT}},
+    {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_Z,   tagmon,     {.i = WLR_DIRECTION_LEFT}},
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_greater,tagmon,     {.i = WLR_DIRECTION_RIGHT}},
     // Moveresize kb patch
     { MODKEY|WLR_MODIFIER_CTRL,                 XKB_KEY_j,      moveresizekb,   {.v = (int []){ 0, 40, 0, 0 }}},
@@ -258,9 +262,9 @@ static const Key keys[] = {
     TAGKEYS(XKB_KEY_4, XKB_KEY_dollar, 3),
     TAGKEYS(XKB_KEY_5, XKB_KEY_percent, 4),
     TAGKEYS(XKB_KEY_6, XKB_KEY_ampersand, 5),
-    TAGKEYS(XKB_KEY_7, XKB_KEY_slash, 6),
-    TAGKEYS(XKB_KEY_8, XKB_KEY_parenleft, 7),
-    TAGKEYS(XKB_KEY_9, XKB_KEY_parenright, 8),
+    // TAGKEYS(XKB_KEY_7, XKB_KEY_slash, 6),
+    // TAGKEYS(XKB_KEY_8, XKB_KEY_parenleft, 7),
+    // TAGKEYS(XKB_KEY_9, XKB_KEY_parenright, 8),
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_Q,      quit,   {0}},
 
     /* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
@@ -286,11 +290,17 @@ static const Key keys[] = {
     CHVT(11),
     CHVT(12),
     /* Media keys */
-    {0, XF86XK_AudioRaiseVolume, spawn, {.v = (const char *[]){ "/home/ak/scripts/change-vol.sh", "up", NULL}}},
-    {0, XF86XK_AudioLowerVolume, spawn, {.v = (const char *[]){ "/home/ak/scripts/change-vol.sh", "down", NULL}}},
-    {0, XF86XK_AudioMute, spawn, {.v = (const char *[]){ "/home/ak/scripts/change-vol.sh", "mute", NULL}}},
-    {0, XF86XK_MonBrightnessUp, spawn, {.v = (const char *[]){ "/home/ak/scripts/change-brightness.sh", "up", NULL}}},
-    {0, XF86XK_MonBrightnessDown, spawn, {.v = (const char *[]){ "/home/ak/scripts/change-brightness.sh", "down", NULL}}},
+    {0, XF86XK_AudioRaiseVolume, spawn, {.v = (const char *[]){ "/home/ak/scripts/volume.sh", "up", NULL}}},
+    {0, XF86XK_AudioLowerVolume, spawn, {.v = (const char *[]){ "/home/ak/scripts/volume.sh", "down", NULL}}},
+    {0, XF86XK_AudioMute, spawn, {.v = (const char *[]){ "/home/ak/scripts/volume.sh", "mute", NULL}}},
+    {0, XF86XK_MonBrightnessUp, spawn, {.v = (const char *[]){ "/home/ak/scripts/brightness.sh", "up", NULL}}},
+    {0, XF86XK_MonBrightnessDown, spawn, {.v = (const char *[]){ "/home/ak/scripts/brightness.sh", "down", NULL}}},
+
+    // playerctl shortcuts
+    { MODKEY | WLR_MODIFIER_CTRL,               XKB_KEY_Left,       spawn,   {.v = (const char * []){ "playerctl", "previous", NULL }}},
+    { MODKEY | WLR_MODIFIER_CTRL,               XKB_KEY_Right,      spawn,   {.v = (const char * []){ "playerctl", "next", NULL }}},
+    { MODKEY | WLR_MODIFIER_CTRL,               XKB_KEY_Up,         spawn,   {.v = (const char * []){ "playerctl", "play-pause", NULL }}},
+    { MODKEY | WLR_MODIFIER_CTRL,               XKB_KEY_Down,       spawn,   {.v = (const char * []){ "playerctl", "play-pause", NULL }}},
 };
 
 static const Button buttons[] = {

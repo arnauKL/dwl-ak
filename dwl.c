@@ -1990,7 +1990,8 @@ focusclient (Client *c, int lift)
         return;
 
     /* Warp cursor to center of client if it is outside */
-    if (lift)
+    if (lift && !cursor_hidden)
+        // ak: add some check to see if cursor is hidden
         warpcursor (c);
 
     /* Raise client in stacking order if requested */
@@ -2063,7 +2064,8 @@ focusclient (Client *c, int lift)
         }
 
     /* Change cursor surface */
-    motionnotify (0, NULL, 0, 0, 0, 0);
+    if (!cursor_hidden) // ak: trying some stuff
+        motionnotify (0, NULL, 0, 0, 0, 0);
 
     /* Have a client, so focus its top-level wlr_surface */
     client_notify_enter (client_surface (c), wlr_seat_get_keyboard (seat));
