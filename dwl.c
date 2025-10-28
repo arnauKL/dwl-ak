@@ -214,6 +214,7 @@ struct Client
     pid_t pid;
     Client *swallowing; /* client being hidden */
     Client *swallowedby;
+    struct wl_list link_temp; /* scratchpad patch */
 };
 
 typedef struct
@@ -346,6 +347,8 @@ typedef struct
 } SessionLock;
 
 /* function declarations */
+
+static void addscratchpad (const Arg *arg);
 static void applybounds (Client *c, struct wlr_box *bbox);
 static void applyrules (Client *c);
 static void arrange (Monitor *m);
@@ -438,6 +441,7 @@ static void pointerfocus (Client *c, struct wlr_surface *surface, double sx,
 static void powermgrsetmode (struct wl_listener *listener, void *data);
 static void quit (const Arg *arg);
 static void rendermon (struct wl_listener *listener, void *data);
+static void removescratchpad (const Arg *arg);
 static void requestdecorationmode (struct wl_listener *listener, void *data);
 static void requeststartdrag (struct wl_listener *listener, void *data);
 static void requestmonstate (struct wl_listener *listener, void *data);
@@ -467,6 +471,7 @@ static void togglebar (const Arg *arg);
 static void togglefloating (const Arg *arg);
 static void togglefullscreen (const Arg *arg);
 static void togglefakefullscreen (const Arg *arg);
+static void togglescratchpad (const Arg *arg);
 static void toggleswallow (const Arg *arg);
 static void toggleautoswallow (const Arg *arg);
 static void togglegaps (const Arg *arg);
@@ -596,6 +601,9 @@ static const struct wlr_buffer_impl buffer_impl = {
     .end_data_ptr_access = bufdataend,
 };
 
+static struct wl_list scratchpad_clients;
+static int scratchpad_visible = 1;
+
 #ifdef XWAYLAND
 static void activatex11 (struct wl_listener *listener, void *data);
 static void associatex11 (struct wl_listener *listener, void *data);
@@ -614,6 +622,8 @@ static struct wlr_xwayland *xwayland;
 
 /* attempt to encapsulate suck into one file */
 #include "client.h"
+
+#include "simple_scratchpad.c"
 
 /* function implementations */
 void
@@ -1581,6 +1591,7 @@ createpointer (struct wlr_pointer *pointer)
 
             if (libinput_device_config_tap_get_finger_count (device))
                 {
+                    /* Trackpad */
                     libinput_device_config_tap_set_enabled (device,
                                                             tap_to_click);
                     libinput_device_config_tap_set_drag_enabled (device,
@@ -1589,11 +1600,36 @@ createpointer (struct wlr_pointer *pointer)
                         device, drag_lock);
                     libinput_device_config_tap_set_button_map (device,
                                                                button_map);
-                }
 
-            if (libinput_device_config_scroll_has_natural_scroll (device))
-                libinput_device_config_scroll_set_natural_scroll_enabled (
-                    device, natural_scrolling);
+                    if (libinput_device_config_scroll_has_natural_scroll (
+                            device))
+                        libinput_device_config_scroll_set_natural_scroll_enabled (
+                            device, trackpad_natural_scrolling);
+
+                    if (libinput_device_config_accel_is_available (device))
+                        {
+                            libinput_device_config_accel_set_profile (
+                                device, trackpad_accel_profile);
+                            libinput_device_config_accel_set_speed (
+                                device, trackpad_accel_speed);
+                        }
+                }
+            else
+                {
+                    /* Mouse */
+                    if (libinput_device_config_scroll_has_natural_scroll (
+                            device))
+                        libinput_device_config_scroll_set_natural_scroll_enabled (
+                            device, mouse_natural_scrolling);
+
+                    if (libinput_device_config_accel_is_available (device))
+                        {
+                            libinput_device_config_accel_set_profile (
+                                device, mouse_accel_profile);
+                            libinput_device_config_accel_set_speed (
+                                device, mouse_accel_speed);
+                        }
+                }
 
             if (libinput_device_config_dwt_is_available (device))
                 libinput_device_config_dwt_set_enabled (device,
@@ -1618,16 +1654,7 @@ createpointer (struct wlr_pointer *pointer)
             if (libinput_device_config_send_events_get_modes (device))
                 libinput_device_config_send_events_set_mode (device,
                                                              send_events_mode);
-
-            if (libinput_device_config_accel_is_available (device))
-                {
-                    libinput_device_config_accel_set_profile (device,
-                                                              accel_profile);
-                    libinput_device_config_accel_set_speed (device,
-                                                            accel_speed);
-                }
         }
-
     wlr_cursor_attach_input_device (cursor, &pointer->base);
 }
 
@@ -1814,10 +1841,23 @@ void
 destroynotify (struct wl_listener *listener, void *data)
 {
     /* Called when the xdg_toplevel is destroyed. */
-    Client *c = wl_container_of (listener, c, destroy);
+    Client *sc, *c = wl_container_of (listener, c, destroy);
     wl_list_remove (&c->destroy.link);
     wl_list_remove (&c->set_title.link);
     wl_list_remove (&c->fullscreen.link);
+    /* Scratchpad: Check if destroyed client was part of scratchpad_clients
+     * and clean it from the list if so. */
+    if (c && wl_list_length (&scratchpad_clients) > 0)
+        {
+            wl_list_for_each (sc, &scratchpad_clients, link_temp)
+            {
+                if (sc == c)
+                    {
+                        wl_list_remove (&c->link_temp);
+                        break;
+                    }
+            }
+        }
 #ifdef XWAYLAND
     if (c->type != XDGShell)
         {
@@ -3044,12 +3084,26 @@ setcursorshape (struct wl_listener *listener, void *data)
 void
 setfloating (Client *c, int floating)
 {
-    Client *p = client_get_parent (c);
+    Client *sc, *p = client_get_parent (c);
     c->isfloating = floating;
     /* If in floating layout do not change the client's layer */
     if (!c->mon || !client_surface (c)->mapped
         || !c->mon->lt[c->mon->sellt]->arrange)
         return;
+    /* Scratchpad patch: Check if unfloated client was part of
+     * scratchpad_clients and remove it from scratchpad_clients list if so
+     */
+    if (!floating && wl_list_length (&scratchpad_clients) > 0)
+        {
+            wl_list_for_each (sc, &scratchpad_clients, link_temp)
+            {
+                if (sc == c)
+                    {
+                        wl_list_remove (&c->link_temp);
+                        break;
+                    }
+            }
+        }
     wlr_scene_node_reparent (
         &c->scene->node,
         layers[c->isfullscreen || (p && p->isfullscreen) ? LyrFS
@@ -3308,6 +3362,7 @@ setup (void)
      */
     wl_list_init (&clients);
     wl_list_init (&fstack);
+    wl_list_init (&scratchpad_clients); /* scratchpad patch */
 
     xdg_shell = wlr_xdg_shell_create (dpy, 6);
     wl_signal_add (&xdg_shell->events.new_toplevel, &new_xdg_toplevel);

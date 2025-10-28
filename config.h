@@ -2,7 +2,7 @@
 
 // clang-format off
 #include <X11/XF86keysym.h> // So I can have media keys working
-#include "/home/ak/.cache/wal/colors-dwl.h" // pywal integration
+//#include "/home/ak/.cache/wal/colors-dwl.h" // pywal integration
 
 #define COLOR(hex) {                    \
     ((hex >> 24) & 0xFF) / 255.0f,      \
@@ -18,27 +18,28 @@ static const int smartborders               = 1;
 static const unsigned int borderpx          = 1; /* border pixel of windows */
 
 static const int smartgaps      = 0; /* 1 means no outer gap when there is only one window */
-static int gaps                 = 1; /* 1 means gaps between windows are added */
+static int gaps                 = 0; /* 1 means gaps between windows are added */
 static const unsigned int gappx = 16; /* gap pixel between windows */
-
 
 static int enableautoswallow    = 1; /* enables autoswallowing newly spawned clients */
 static float swallowborder      = 1.0f; /* add this multiplied by borderpx to border when a client is swallowed */
 
-
-static const int showbar    = 1; /* 0 means no bar */
+static const int showbar    = 0; /* 0 means no bar */
 static const int topbar     = 0;  /* 0 means bottom bar */
-static const char *fonts[]  = { "CaskaydiaCove NF:size=9:style=Bold" };
+static const char *fonts[]  = { "CaskaydiaCove NF:size=10:style=Bold" };
 
+#define BG 0x736D66ff
+#define FG 0xDDDBD9ff
+#define WMENU_FG "736D66"
+
+static const float rootcolor[] = COLOR (BG);
 static uint32_t colors[][3] = {
     /* [...] = {fg, bg, border} */
-    [SchemeNorm] = { COLOR3, BG, BG },
-    [SchemeSel] = { BG, COLOR2, COLOR2 },
+    [SchemeNorm] = { FG, 0x000000ff, BG },
+    [SchemeSel] = { 0x000000ff, FG, FG },
     [SchemeUrg] = { 0, 0, 0x770000ff },
 };
 
-static const float rootcolor[] = COLOR (BG);
-//static const float rootcolor[] = COLOR (0x9a5400ff); // Brown-ish
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[] = { 0.0f, 0.5f, 0.0f, 1.0f }; /* You can also use glsl colors */
 
@@ -69,8 +70,8 @@ static const Rule rules[] = {
 /* layout(s) */
 static const Layout layouts[] = {
     /* symbol     arrange function */
-    { "[]=", tile },
     { "[M]", monocle },
+    { "[]=", tile },
     { "><>", NULL }, /* no layout function means floating behavior */
 };
 
@@ -97,8 +98,9 @@ static const struct xkb_rule_names xkb_rules = {
     /* example:
     .options = "ctrl:nocaps",
     */
-    .options = "caps:ctrl_modifier",
     .layout = "es",
+    .options = "caps:ctrl_modifier",
+    //.variant = "eurkey" // xkbcommon cannot compile with eurkey variant, idk. Tried .layout = "de" but didnt work either
 };
 
 /* numlock and capslock (from patch) */
@@ -116,7 +118,8 @@ static const int repeat_delay   = 400;
 static const int tap_to_click   = 1;
 static const int tap_and_drag   = 1;
 static const int drag_lock      = 1;
-static const int natural_scrolling = 1;
+static const int mouse_natural_scrolling = 0;
+static const int trackpad_natural_scrolling = 1;
 static const int disable_while_typing = 1;
 static const int left_handed = 0;
 static const int middle_button_emulation = 0;
@@ -152,6 +155,11 @@ static const enum libinput_config_accel_profile accel_profile
     = LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE;
 static const double accel_speed = 0.3;
 
+static const enum libinput_config_accel_profile trackpad_accel_profile = LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE;
+static const double trackpad_accel_speed = 0.3;
+static const enum libinput_config_accel_profile mouse_accel_profile = LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT;
+static const double mouse_accel_speed = 0.3;
+
 /* You can choose between:
 LIBINPUT_CONFIG_TAP_MAP_LRM -- 1/2/3 finger tap maps to left/right/middle
 LIBINPUT_CONFIG_TAP_MAP_LMR -- 1/2/3 finger tap maps to left/middle/right
@@ -181,21 +189,15 @@ static const enum libinput_config_tap_button_map button_map
 
 /* commands */
 static const char *termcmd[] = { "foot", NULL };
-static const char *menucmd[]
-    = { "wmenu-run", "-b", "-i",         "-f", "CaskaydiaCove NF bold 9", "-N",
-        WMENU_BG,    "-S", WMENU_COLOR3, "-s", WMENU_BG,           NULL };
+static const char *menucmd[] = { "wmenu-run", "-b", "-i", "-f", "CaskaydiaCove NF bold 10", "-N", "000000", "-S", WMENU_FG, "-s", "000000", NULL };
 static const char *screenshotcmd[] = { "grimshot", "savecopy", "area", NULL };
 static const char *bluemancmd[] = { "blueman-manager", NULL };
-static const char *filemanagercmd[] = { "nemo", NULL };
-static const char *browsercmd[] = { "luakit", NULL };
+//static const char *filemanagercmd[] = { "nautilus", NULL };
+static const char *filemanagercmd[] = { "pcmanfm", NULL };
+static const char *browsercmd[] = { "librewolf", NULL };
 static const char *tor_browsercmd[] = { "torbrowser-launcher", NULL };
-static const char *toggle_bgcmd[]
-    = { "/home/ak/scripts/toggle-swaybg.sh", NULL };
-static const char *random_dark_bgcmd[]
-    = { "/home/ak/scripts/random-wal.sh", "dark", NULL };
-static const char *random_light_bgcmd[]
-    = { "/home/ak/scripts/random-wal.sh", "light", NULL };
-static const char *bat_notcmd[] = { "/home/ak/scripts/bat-notify.sh", NULL };
+static const char *toggle_lapt_screen[] = { "wlr-randr", "--output", "eDP-1", "--toggle", NULL };
+static const char *bat_notcmd[] = { "/home/ak/.scripts/status-notify.sh", NULL };
 
 static const Key keys[] = {
     /* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
@@ -207,9 +209,7 @@ static const Key keys[] = {
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_W,      spawn,      {.v = tor_browsercmd}},
     {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT,    XKB_KEY_S,      spawn,      {.v = screenshotcmd}},
     {WLR_MODIFIER_LOGO,                         XKB_KEY_b,      spawn,      {.v = bluemancmd}},
-    {WLR_MODIFIER_LOGO,                         XKB_KEY_1,      spawn,      {.v = toggle_bgcmd}},
-    {WLR_MODIFIER_LOGO,                         XKB_KEY_2,      spawn,      {.v = random_dark_bgcmd}},
-    {WLR_MODIFIER_LOGO,                         XKB_KEY_3,      spawn,      {.v = random_light_bgcmd}},
+    {WLR_MODIFIER_LOGO,                         XKB_KEY_1,      spawn,      {.v = toggle_lapt_screen}},
     {WLR_MODIFIER_LOGO,                         XKB_KEY_0,      spawn,      {.v = bat_notcmd}},
     {MODKEY,                                    XKB_KEY_b,      togglebar,  {0}},   // Toggle bar visibility
     {MODKEY,                                    XKB_KEY_j,      focusstack, {.i = +1}}, // Change focus up
@@ -224,8 +224,8 @@ static const Key keys[] = {
     {MODKEY,                                    XKB_KEY_Tab,    view,       {0}},   // View 0th tag
     {MODKEY,                                    XKB_KEY_q,      killclient, {0}},   // Kill client
     // Layouts
-    {MODKEY,                                    XKB_KEY_m,      setlayout,  {.v = &layouts[1]}},    // [0] is monocle
-    {MODKEY,                                    XKB_KEY_t,      setlayout,  {.v = &layouts[0]}},    // [1] is tile
+    {MODKEY,                                    XKB_KEY_m,      setlayout,  {.v = &layouts[0]}},    // [0] is monocle
+    {MODKEY,                                    XKB_KEY_t,      setlayout,  {.v = &layouts[1]}},    // [1] is tile
     {MODKEY,                                    XKB_KEY_n,      setlayout,  {.v = &layouts[2]}},    // [2] is null
     {MODKEY,                                    XKB_KEY_space,  setlayout,  {0}},   // No layout: floating
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_space,  togglefloating, {0}},   // No layout for current window
@@ -251,6 +251,10 @@ static const Key keys[] = {
     { MODKEY|WLR_MODIFIER_SHIFT,                XKB_KEY_L,      moveresizekb,   {.v = (int []){ 0, 0, 40, 0 }}},
     { MODKEY|WLR_MODIFIER_SHIFT,                XKB_KEY_H,      moveresizekb,   {.v = (int []){ 0, 0, -40, 0 }}},
 
+    // Scratchpad patch
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_underscore,     addscratchpad,    {0} },
+	{ MODKEY|WLR_MODIFIER_CTRL,  XKB_KEY_minus,          removescratchpad, {0} },
+	{ MODKEY,                    XKB_KEY_minus,          togglescratchpad, {0} },
     // Gaps
 	{ MODKEY,                    XKB_KEY_g,          togglegaps,     {0} },
     //
@@ -262,7 +266,7 @@ static const Key keys[] = {
     TAGKEYS(XKB_KEY_4, XKB_KEY_dollar, 3),
     TAGKEYS(XKB_KEY_5, XKB_KEY_percent, 4),
     TAGKEYS(XKB_KEY_6, XKB_KEY_ampersand, 5),
-    // TAGKEYS(XKB_KEY_7, XKB_KEY_slash, 6),
+    TAGKEYS(XKB_KEY_7, XKB_KEY_slash, 6),
     // TAGKEYS(XKB_KEY_8, XKB_KEY_parenleft, 7),
     // TAGKEYS(XKB_KEY_9, XKB_KEY_parenright, 8),
     {MODKEY | WLR_MODIFIER_SHIFT,               XKB_KEY_Q,      quit,   {0}},
@@ -290,11 +294,11 @@ static const Key keys[] = {
     CHVT(11),
     CHVT(12),
     /* Media keys */
-    {0, XF86XK_AudioRaiseVolume, spawn, {.v = (const char *[]){ "/home/ak/scripts/volume.sh", "up", NULL}}},
-    {0, XF86XK_AudioLowerVolume, spawn, {.v = (const char *[]){ "/home/ak/scripts/volume.sh", "down", NULL}}},
-    {0, XF86XK_AudioMute, spawn, {.v = (const char *[]){ "/home/ak/scripts/volume.sh", "mute", NULL}}},
-    {0, XF86XK_MonBrightnessUp, spawn, {.v = (const char *[]){ "/home/ak/scripts/brightness.sh", "up", NULL}}},
-    {0, XF86XK_MonBrightnessDown, spawn, {.v = (const char *[]){ "/home/ak/scripts/brightness.sh", "down", NULL}}},
+    {0, XF86XK_AudioRaiseVolume, spawn, {.v = (const char *[]){ "/home/ak/.scripts/volume.sh", "up", NULL}}},
+    {0, XF86XK_AudioLowerVolume, spawn, {.v = (const char *[]){ "/home/ak/.scripts/volume.sh", "down", NULL}}},
+    {0, XF86XK_AudioMute, spawn, {.v = (const char *[]){ "/home/ak/.scripts/volume.sh", "mute", NULL}}},
+    {0, XF86XK_MonBrightnessUp, spawn, {.v = (const char *[]){ "/home/ak/.scripts/brightness.sh", "up", NULL}}},
+    {0, XF86XK_MonBrightnessDown, spawn, {.v = (const char *[]){ "/home/ak/.scripts/brightness.sh", "down", NULL}}},
 
     // playerctl shortcuts
     { MODKEY | WLR_MODIFIER_CTRL,               XKB_KEY_Left,       spawn,   {.v = (const char * []){ "playerctl", "previous", NULL }}},
