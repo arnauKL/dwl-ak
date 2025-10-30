@@ -30,7 +30,10 @@ static const char *fonts[]  = { "CaskaydiaCove NF:size=10:style=Bold" };
 
 #define BG 0x736D66ff
 #define FG 0xDDDBD9ff
-#define WMENU_FG "736D66"
+#define WMENU_SELECTION_FG "fff8f0"
+#define WMENU_SELECTION_BG "736d66"
+#define WMENU_NORMAL_FG "736d66"
+#define WMENU_NORMAL_BG "000000"
 
 static const float rootcolor[] = COLOR (BG);
 static uint32_t colors[][3] = {
@@ -99,8 +102,8 @@ static const struct xkb_rule_names xkb_rules = {
     .options = "ctrl:nocaps",
     */
     .layout = "es",
+    //.layout = "eu",
     .options = "caps:ctrl_modifier",
-    //.variant = "eurkey" // xkbcommon cannot compile with eurkey variant, idk. Tried .layout = "de" but didnt work either
 };
 
 /* numlock and capslock (from patch) */
@@ -189,15 +192,15 @@ static const enum libinput_config_tap_button_map button_map
 
 /* commands */
 static const char *termcmd[] = { "foot", NULL };
-static const char *menucmd[] = { "wmenu-run", "-b", "-i", "-f", "CaskaydiaCove NF bold 10", "-N", "000000", "-S", WMENU_FG, "-s", "000000", NULL };
+    static const char *menucmd[] = { "wmenu-run", "-b", "-i", "-f", "CaskaydiaCove NF bold 10", "-N", WMENU_NORMAL_BG, "-n", WMENU_NORMAL_FG, "-S", WMENU_SELECTION_BG, "-s", WMENU_SELECTION_FG, NULL };
 static const char *screenshotcmd[] = { "grimshot", "savecopy", "area", NULL };
 static const char *bluemancmd[] = { "blueman-manager", NULL };
-//static const char *filemanagercmd[] = { "nautilus", NULL };
 static const char *filemanagercmd[] = { "pcmanfm", NULL };
 static const char *browsercmd[] = { "librewolf", NULL };
 static const char *tor_browsercmd[] = { "torbrowser-launcher", NULL };
 static const char *toggle_lapt_screen[] = { "wlr-randr", "--output", "eDP-1", "--toggle", NULL };
 static const char *bat_notcmd[] = { "/home/ak/.scripts/status-notify.sh", NULL };
+static const char *helpcmd[] = { "/home/ak/.scripts/help.sh", NULL };
 
 static const Key keys[] = {
     /* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
@@ -211,6 +214,7 @@ static const Key keys[] = {
     {WLR_MODIFIER_LOGO,                         XKB_KEY_b,      spawn,      {.v = bluemancmd}},
     {WLR_MODIFIER_LOGO,                         XKB_KEY_1,      spawn,      {.v = toggle_lapt_screen}},
     {WLR_MODIFIER_LOGO,                         XKB_KEY_0,      spawn,      {.v = bat_notcmd}},
+    {WLR_MODIFIER_LOGO,                         XKB_KEY_h,      spawn,      {.v = helpcmd }},
     {MODKEY,                                    XKB_KEY_b,      togglebar,  {0}},   // Toggle bar visibility
     {MODKEY,                                    XKB_KEY_j,      focusstack, {.i = +1}}, // Change focus up
     {MODKEY,                                    XKB_KEY_k,      focusstack, {.i = -1}}, // Change focus down
